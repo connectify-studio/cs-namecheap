@@ -48,11 +48,19 @@ func GetDomains() *cobra.Command {
 			client := namecheap.New(hc, creds, sandbox)
 
 			a.Log.Info("fetching domains", "page", page, "page_size", pageSize, "search", search, "sandbox", sandbox)
-			domains, err := client.GetDomains(ctx, namecheap.GetListOptions{
+			opts := namecheap.GetListOptions{
 				Page:       page,
 				PageSize:   pageSize,
 				SearchTerm: search,
-			})
+			}
+			// Without an explicit --page, return every domain by paging through
+			// the full result set; with --page, honor that single page.
+			var domains []namecheap.Domain
+			if page > 0 {
+				domains, err = client.GetDomains(ctx, opts)
+			} else {
+				domains, err = client.GetAllDomains(ctx, opts)
+			}
 			if err != nil {
 				return err
 			}
@@ -64,7 +72,7 @@ func GetDomains() *cobra.Command {
 			return a.Render(res)
 		},
 	}
-	cmd.Flags().IntVar(&page, "page", 0, "page number (1-based)")
+	cmd.Flags().IntVar(&page, "page", 0, "fetch only this page (1-based); default fetches all pages")
 	cmd.Flags().IntVar(&pageSize, "page-size", 0, "results per page (max 100)")
 	cmd.Flags().StringVar(&search, "search", "", "filter by search term")
 	cmd.Flags().BoolVar(&sandbox, "sandbox", false, "use the Namecheap sandbox API")
