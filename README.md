@@ -29,6 +29,14 @@ Binaries are published for Linux, macOS, and Windows on both `amd64` and
 go install github.com/connectify-studio/cs-namecheap@latest
 ```
 
+This installs the binary to `$(go env GOPATH)/bin` (usually `~/go/bin`). Make
+sure that directory is on your `PATH`, otherwise the shell won't find
+`cs-namecheap`:
+
+```sh
+export PATH="$PATH:$(go env GOPATH)/bin"   # add to your shell profile to persist
+```
+
 ### Build from source
 
 ```sh
@@ -125,6 +133,22 @@ binaries and publishes them to a GitHub Release.
 git tag v0.1.0
 git push origin v0.1.0
 ```
+
+## Troubleshooting
+
+### `cs-namecheap: command not found`
+
+The binary isn't on your `PATH`. The shell only finds bare commands like
+`cs-namecheap` in directories listed in `PATH`.
+
+- **Downloaded a release?** Unpacking the archive leaves `cs-namecheap` in the
+  current directory. Either move it onto your `PATH`
+  (`sudo mv cs-namecheap /usr/local/bin/`) or run it with an explicit path
+  (`./cs-namecheap config set api_user YOUR_API_USER`).
+- **Installed with `go install`?** Add Go's bin directory to your `PATH`:
+  `export PATH="$PATH:$(go env GOPATH)/bin"`.
+
+Confirm it's found with `which cs-namecheap` and `cs-namecheap --version`.
 
 ## License
 
