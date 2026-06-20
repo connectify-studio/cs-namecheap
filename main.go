@@ -10,6 +10,13 @@ import (
 	"github.com/connectify-studio/cs-namecheap/internal/commands"
 )
 
+// Build metadata, injected via -ldflags by GoReleaser.
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
 	a, err := app.New(app.Config{
 		Name:  "namecheap",
@@ -23,6 +30,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	a.Root.Version = version
+	a.Root.SetVersionTemplate("cs-namecheap {{.Version}} (commit " + commit + ", built " + date + ")\n")
 
 	a.Root.AddCommand(commands.GetDomains())
 
