@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/connectify-studio/framework/httpx"
 )
@@ -83,8 +84,49 @@ type GetListOptions struct {
 }
 
 // GetDomains calls namecheap.domains.getList and returns the domains for the
-// requested page.
+// requested page only. Use GetAllDomains to retrieve every page.
 func (c *Client) GetDomains(ctx context.Context, opts GetListOptions) ([]Domain, error) {
+	resp, err := c.do(ctx, c.listParams(opts))
+	if err != nil {
+		return nil, err
+	}
+	return resp.DomainGetList.Domains, nil
+}
+
+// GetAllDomains calls namecheap.domains.getList repeatedly, following the
+// response paging until every domain has been retrieved. The Namecheap API caps
+// PageSize at 100 and defaults to 20, so accounts with more domains than a
+// single page must be paginated. opts.Page, if set, is the page to start from.
+func (c *Client) GetAllDomains(ctx context.Context, opts GetListOptions) ([]Domain, error) {
+	page := max(opts.Page, 1)
+
+	var all []Domain
+	for {
+		o := opts
+		o.Page = page
+		resp, err := c.do(ctx, c.listParams(o))
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, resp.DomainGetList.Domains...)
+
+		p := resp.Paging
+		// Stop when paging metadata is missing/unusable or we've covered the
+		// reported total. The final guard on an empty page avoids looping
+		// forever if the server returns inconsistent paging.
+		if p.PageSize <= 0 || p.TotalItems <= 0 || page*p.PageSize >= p.TotalItems {
+			break
+		}
+		if len(resp.DomainGetList.Domains) == 0 {
+			break
+		}
+		page++
+	}
+	return all, nil
+}
+
+// listParams builds the query for a single namecheap.domains.getList page.
+func (c *Client) listParams(opts GetListOptions) url.Values {
 	q := c.baseParams("namecheap.domains.getList")
 	if opts.Page > 0 {
 		q.Set("Page", strconv.Itoa(opts.Page))
@@ -95,11 +137,7 @@ func (c *Client) GetDomains(ctx context.Context, opts GetListOptions) ([]Domain,
 	if opts.SearchTerm != "" {
 		q.Set("SearchTerm", opts.SearchTerm)
 	}
-	resp, err := c.do(ctx, q)
-	if err != nil {
-		return nil, err
-	}
-	return resp.DomainGetList.Domains, nil
+	return q
 }
 
 // baseParams seeds the query with the five global parameters.
@@ -144,7 +182,24 @@ func parse(body []byte) (*apiResponse, error) {
 		}
 		return nil, fmt.Errorf("namecheap API returned status %q", parsed.Status)
 	}
+	// Namecheap returns dates as mm/dd/yyyy; normalize to ISO 8601 (yyyy-mm-dd)
+	// so every output format (table, JSON, CSV) is consistent and sortable.
+	for i := range parsed.DomainGetList.Domains {
+		d := &parsed.DomainGetList.Domains[i]
+		d.Created = toISODate(d.Created)
+		d.Expires = toISODate(d.Expires)
+	}
 	return &parsed, nil
+}
+
+// toISODate converts a Namecheap mm/dd/yyyy date to yyyy-mm-dd. Values that
+// don't match the expected layout are returned unchanged.
+func toISODate(s string) string {
+	t, err := time.Parse("01/02/2006", s)
+	if err != nil {
+		return s
+	}
+	return t.Format("2006-01-02")
 }
 
 // ParseDomainList decodes a domains.getList XML payload into domains. Provided

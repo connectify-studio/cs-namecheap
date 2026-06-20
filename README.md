@@ -71,6 +71,9 @@ cs-namecheap config list   # secrets are masked
 cs-namecheap config get api_user
 ```
 
+Only `api_user`, `api_key`, and `username` are valid keys; `config set` rejects
+anything else.
+
 ## Usage
 
 ### List domains
@@ -79,11 +82,14 @@ cs-namecheap config get api_user
 cs-namecheap get-domains
 ```
 
+By default this fetches **all** domains in the account, paging through the
+Namecheap API as needed. Pass `--page` to retrieve a single page instead.
+
 Options:
 
 | Flag           | Description                                              |
 | -------------- | -------------------------------------------------------- |
-| `--page`       | Page number (1-based)                                    |
+| `--page`       | Fetch only this page (1-based); default fetches all      |
 | `--page-size`  | Results per page (max 100)                               |
 | `--search`     | Filter by search term                                    |
 | `--client-ip`  | Client IP to send (default: auto-detected public IP)     |
@@ -113,6 +119,9 @@ These global flags work on any command:
 cs-namecheap get-domains --json
 cs-namecheap get-domains --csv > domains.csv
 ```
+
+Dates (`Created`, `Expires`) are emitted in ISO 8601 (`yyyy-mm-dd`) format
+across all output formats.
 
 ## Releasing
 
