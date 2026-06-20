@@ -3,8 +3,8 @@ module github.com/connectify-studio/cs-namecheap
 go 1.26
 
 require (
-	github.com/spf13/cobra v1.8.1
 	github.com/connectify-studio/framework v0.1.0
+	github.com/spf13/cobra v1.8.1
 )
 
 require (
